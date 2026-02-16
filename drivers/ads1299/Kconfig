@@ -1,5 +1,3 @@
-source "Kconfig.zephyr"
-
 config ADS1299
     bool "ADS1299 ADC driver"
     default y
