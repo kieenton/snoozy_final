@@ -1,0 +1,4 @@
+config BNO086
+    bool "BNO086 driver"
+    default y
+    depends on I2C
