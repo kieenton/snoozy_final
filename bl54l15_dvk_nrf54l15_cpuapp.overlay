@@ -10,3 +10,74 @@
 
 // For more help, browse the DeviceTree documentation at https://docs.zephyrproject.org/latest/guides/dts/index.html
 // You can also visit the nRF DeviceTree extension documentation at https://docs.nordicsemi.com/bundle/nrf-connect-vscode/page/guides/ncs_configure_app.html#devicetree-support-in-the-extension
+
+
+&i2c22 {
+    status = "okay";    /* enable the I2C bus */
+    pinctrl-0 = <&i2c22_default>;
+    pinctrl-names = "default";
+    pmic: npm1304@6b {
+        compatible = "nordic,npm1304";
+        reg = <0x6b>;
+
+        regulators {
+            ldo2: LDO2 {
+                regulator-init-microvolt = <3000000>;
+                regulator-boot-on;
+            };
+
+            pvss2: PVSS2 {
+                regulator-boot-on;
+            };
+        };
+    };
+};
+
+/ {
+    pmic_gpio0: pmic-gpio0 {
+        compatible = "gpio-nordic,nrf-gpio";
+        gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+        //flags = <GPIO_OUTPUT>;  /* Correct way */
+    };
+
+    pmic_gpio1: pmic-gpio1 {
+        compatible = "gpio-nordic,nrf-gpio";
+        gpios = <&gpio2 9 GPIO_ACTIVE_HIGH>;
+        //flags = <GPIO_OUTPUT>;
+    };
+
+    pmic_gpio2: pmic-gpio2 {
+        compatible = "gpio-nordic,nrf-gpio";
+        gpios = <&gpio2 6 GPIO_ACTIVE_HIGH>;
+        //flags = <GPIO_OUTPUT>;
+    };
+
+    pmic_gpio3: pmic-gpio3 {
+        compatible = "gpio-nordic,nrf-gpio";
+        gpios = <&gpio2 7 GPIO_ACTIVE_HIGH>;
+        //flags = <GPIO_OUTPUT>;
+    };
+
+    pmic_gpio4: pmic-gpio4 {
+        compatible = "gpio-nordic,nrf-gpio";
+        gpios = <&gpio2 8 GPIO_ACTIVE_HIGH>;
+        //flags = <GPIO_OUTPUT>;
+    };
+
+    zephyr,user {
+        GPIO0-gpios = <&gpio2 3 0>;
+        GPIO1-gpios = <&gpio2 9 0>;
+        GPIO2-gpios = <&gpio2 6 0>;
+        GPIO3-gpios = <&gpio2 7 0>;
+        GPIO4-gpios = <&gpio2 8 0>;
+    };
+};
+
+
+&pinctrl {
+    i2c22_default: i2c22_default {
+        group1 {
+            psels = <NRF_PSEL(TWIM_SCL, 0, 3)>, <NRF_PSEL(TWIM_SDA, 0, 0)>;
+        };
+    };
+};
