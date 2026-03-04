@@ -11,3 +11,5 @@ target_sources(app PRIVATE
 
 add_subdirectory(drivers/ads1299)
 add_subdirectory(drivers/bno086)
+
+list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})

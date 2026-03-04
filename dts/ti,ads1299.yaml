@@ -1,0 +1,20 @@
+description: ADS1299 8-channel 24-bit ADC
+
+compatible: "ti,ads1299"
+
+include: [spi-device.yaml]
+
+on-bus: spi                  # add this explicitly
+
+properties:
+  spi-max-frequency:
+    required: true
+  start-gpios:
+    type: phandle-array
+    required: false
+  rst-gpios:
+    type: phandle-array
+    required: false
+  pwdwn-gpios:
+    type: phandle-array
+    required: false
