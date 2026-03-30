@@ -6,10 +6,9 @@ project(snoozy_final)
 target_sources(app PRIVATE
     src/main.c
     src/ble.c
+    src/ads.c
+    src/imu.c
+    src/power.c
 )
-
-
-add_subdirectory(drivers/ads1299)
-add_subdirectory(drivers/bno086)
 
 list(APPEND DTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR})

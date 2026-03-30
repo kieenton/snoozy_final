@@ -2,7 +2,7 @@ description: BNO086 IMU
 
 compatible: "ceva,bno086"
 
-include: [spi-device.yaml]   # this pulls in on-bus: spi automatically
+include: spi-device.yaml   # this pulls in on-bus: spi automatically
 
 on-bus: spi                  # add this explicitly to be safe
 
@@ -13,5 +13,8 @@ properties:
     type: phandle-array
     required: false
   int-gpios:
+    type: phandle-array
+    required: false
+  rst-gpios:
     type: phandle-array
     required: false
