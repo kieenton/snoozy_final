@@ -104,6 +104,9 @@
 
     zephyr,user {
         pmic-gpios = <&gpio2 3 0>, <&gpio2 9 0>, <&gpio2 7 0>, <&gpio2 6 0>, <&gpio2 8 0>;
+        ads_reset_gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
+        ads_start_gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
+        ads_drdy_gpios  = <&gpio0 1 GPIO_ACTIVE_LOW>;  /* replace X with your DRDY pin */
     };
 };
 
