@@ -57,10 +57,11 @@
 #define STREAM_DECIMATION 1U
 #define PACKET_SIZE 40
 
-#define ZEPHYR_USER_NODE DT_PATH(zephyr_user)
+//#define ZEPHYR_USER_NODE DT_PATH(zephyr_user)
 #define DEVICE_NAME      CONFIG_BT_DEVICE_NAME
 #define DEVICE_NAME_LEN  (sizeof(DEVICE_NAME) - 1)
 
+/*
 static const struct spi_dt_spec ads_spi =
     SPI_DT_SPEC_GET(DT_NODELABEL(ads1299),
                     SPI_WORD_SET(8) | SPI_TRANSFER_MSB | SPI_MODE_CPHA,
@@ -74,6 +75,26 @@ static const struct gpio_dt_spec start_pin =
 
 static const struct gpio_dt_spec drdy_pin =
     GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_drdy_gpios);
+*/
+
+#define ADS_NODE DT_NODELABEL(ads1299)
+
+#define DEVICE_NAME      CONFIG_BT_DEVICE_NAME
+#define DEVICE_NAME_LEN  (sizeof(DEVICE_NAME) - 1)
+
+static const struct spi_dt_spec ads_spi =
+    SPI_DT_SPEC_GET(ADS_NODE,
+                    SPI_WORD_SET(8) | SPI_TRANSFER_MSB | SPI_MODE_CPHA,
+                    0);
+
+static const struct gpio_dt_spec reset_pin =
+    GPIO_DT_SPEC_GET(ADS_NODE, rst_gpios);
+
+static const struct gpio_dt_spec start_pin =
+    GPIO_DT_SPEC_GET(ADS_NODE, start_gpios);
+
+static const struct gpio_dt_spec drdy_pin =
+    GPIO_DT_SPEC_GET(ADS_NODE, drdy_gpios);
 
 static struct bt_conn *current_conn;
 static bool ble_ready;

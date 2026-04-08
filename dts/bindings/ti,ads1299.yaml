@@ -18,3 +18,6 @@ properties:
   pwdwn-gpios:
     type: phandle-array
     required: false
+  drdy-gpios:
+    type: phandle-array
+    required: false

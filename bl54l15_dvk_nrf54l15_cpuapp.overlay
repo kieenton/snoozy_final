@@ -24,6 +24,7 @@
         start-gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
         rst-gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
         pwdwn-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
+        drdy-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
 
     };
 
@@ -141,3 +142,4 @@
         };
     };
 };
+
