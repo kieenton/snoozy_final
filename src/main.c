@@ -5,10 +5,13 @@
 #include <zephyr/drivers/spi.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/devicetree.h>
+
 #include <zephyr/bluetooth/bluetooth.h>
-#include <zephyr/bluetooth/conn.h>
+#include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
-#include <zephyr/bluetooth/services/nus.h>
+#include <zephyr/bluetooth/hci.h>
+
+#include <bluetooth/services/nus.h>
 
 #include <errno.h>
 #include <stdbool.h>
@@ -83,9 +86,7 @@ static int64_t stream_start_at_ms;
 
 static const struct bt_data ad[] = {
     BT_DATA_BYTES(BT_DATA_FLAGS, (BT_LE_AD_GENERAL | BT_LE_AD_NO_BREDR)),
-    BT_DATA_BYTES(BT_DATA_UUID128_ALL,
-        0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0,
-        0x93, 0xf3, 0xa3, 0xb5, 0x01, 0x00, 0x40, 0x6e)
+    BT_DATA_BYTES(BT_DATA_UUID128_ALL, BT_UUID_NUS_VAL)
 };
 
 static const struct bt_data sd[] = {
@@ -387,23 +388,17 @@ static void build_binary_packet(uint8_t pkt[PACKET_SIZE], uint32_t sample_idx,
 
 static void nus_send_binary(const uint8_t *data, uint16_t len)
 {
-    int err;
-
-    if (!ble_ready || current_conn == NULL) {
-        return;
-    }
-
-    err = bt_nus_inst_send(bt_nus_inst_default(), current_conn, data, len);
-    if (err) {
-        printk("bt_nus_send err=%d\n", err);
+    if (current_conn) {
+        int err = bt_nus_send(current_conn, data, len);
+        if (err) {
+            printk("bt_nus_send err=%d\n", err);
+        }
     }
 }
 
-static void received_cb(struct bt_conn *conn, const void *data, uint16_t len, void *ctx)
+static void bt_receive_cb(struct bt_conn *conn, const uint8_t *const data,
+              uint16_t len)
 {
-    ARG_UNUSED(conn);
-    ARG_UNUSED(ctx);
-
     char msg[64];
     size_t n = MIN((size_t)len, sizeof(msg) - 1);
 
@@ -425,7 +420,7 @@ static void received_cb(struct bt_conn *conn, const void *data, uint16_t len, vo
 }
 
 static struct bt_nus_cb nus_cb = {
-    .received = received_cb,
+    .received = bt_receive_cb,
 };
 
 static void connected(struct bt_conn *conn, uint8_t err)
@@ -474,13 +469,13 @@ static int ble_init(void)
         return err;
     }
 
-    err = bt_nus_inst_cb_register(bt_nus_inst_default(), &nus_cb, NULL);
+    err = bt_nus_init(&nus_cb);
     if (err) {
-        printk("bt_nus_cb_register failed: %d\n", err);
+        printk("bt_nus_init failed: %d\n", err);
         return err;
     }
 
-    err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_1,
+    err = bt_le_adv_start(BT_LE_ADV_CONN_FAST_2,
                           ad, ARRAY_SIZE(ad),
                           sd, ARRAY_SIZE(sd));
     if (err) {
@@ -503,74 +498,74 @@ int main(void)
     k_sleep(K_MSEC(1500));
     printk("Starting ADS1299 BLE external CH1 stream...\n");
 
-    if (!spi_is_ready_dt(&ads_spi)) {
-        printk("SPI device not ready\n");
-        return 0;
-    }
+    // if (!spi_is_ready_dt(&ads_spi)) {
+    //     printk("SPI device not ready\n");
+    //     return 0;
+    // }
 
-    ret = gpio_pin_configure_dt(&reset_pin, GPIO_OUTPUT_INACTIVE);
-    if (ret) {
-        printk("reset configure failed: %d\n", ret);
-        return 0;
-    }
+    // ret = gpio_pin_configure_dt(&reset_pin, GPIO_OUTPUT_INACTIVE);
+    // if (ret) {
+    //     printk("reset configure failed: %d\n", ret);
+    //     return 0;
+    // }
 
-    ret = gpio_pin_configure_dt(&start_pin, GPIO_OUTPUT_INACTIVE);
-    if (ret) {
-        printk("start configure failed: %d\n", ret);
-        return 0;
-    }
+    // ret = gpio_pin_configure_dt(&start_pin, GPIO_OUTPUT_INACTIVE);
+    // if (ret) {
+    //     printk("start configure failed: %d\n", ret);
+    //     return 0;
+    // }
 
-    ret = gpio_pin_configure_dt(&drdy_pin, GPIO_INPUT);
-    if (ret) {
-        printk("drdy configure failed: %d\n", ret);
-        return 0;
-    }
+    // ret = gpio_pin_configure_dt(&drdy_pin, GPIO_INPUT);
+    // if (ret) {
+    //     printk("drdy configure failed: %d\n", ret);
+    //     return 0;
+    // }
 
-    /*
-     * Keep START low; we will use SPI START command.
-     */
-    gpio_pin_set_dt(&start_pin, 0);
+    // /*
+    //  * Keep START low; we will use SPI START command.
+    //  */
+    // gpio_pin_set_dt(&start_pin, 0);
 
-    /*
-     * Hardware reset pulse.
-     * If your DTS marks the line as active low, gpio_pin_set_dt()
-     * handles that for you.
-     */
-    gpio_pin_set_dt(&reset_pin, 1);
-    k_sleep(K_MSEC(10));
-    gpio_pin_set_dt(&reset_pin, 0);
-    k_sleep(K_MSEC(50));
+    // /*
+    //  * Hardware reset pulse.
+    //  * If your DTS marks the line as active low, gpio_pin_set_dt()
+    //  * handles that for you.
+    //  */
+    // gpio_pin_set_dt(&reset_pin, 1);
+    // k_sleep(K_MSEC(10));
+    // gpio_pin_set_dt(&reset_pin, 0);
+    // k_sleep(K_MSEC(50));
 
-    ret = ads_send_cmd(CMD_RESET);
-    if (ret) {
-        printk("CMD_RESET failed: %d\n", ret);
-        return 0;
-    }
-    k_sleep(K_MSEC(10));
+    // ret = ads_send_cmd(CMD_RESET);
+    // if (ret) {
+    //     printk("CMD_RESET failed: %d\n", ret);
+    //     return 0;
+    // }
+    // k_sleep(K_MSEC(10));
 
-    ret = ads_print_id();
-    if (ret) {
-        printk("ads_print_id failed: %d\n", ret);
-        return 0;
-    }
+    // ret = ads_print_id();
+    // if (ret) {
+    //     printk("ads_print_id failed: %d\n", ret);
+    //     return 0;
+    // }
 
-    ret = ads_configure_external_ch1_mode();
-    if (ret) {
-        printk("ads_configure_external_ch1_mode failed: %d\n", ret);
-        return 0;
-    }
+    // ret = ads_configure_external_ch1_mode();
+    // if (ret) {
+    //     printk("ads_configure_external_ch1_mode failed: %d\n", ret);
+    //     return 0;
+    // }
 
-    ret = ads_dump_key_regs();
-    if (ret) {
-        printk("ads_dump_key_regs failed: %d\n", ret);
-        return 0;
-    }
+    // ret = ads_dump_key_regs();
+    // if (ret) {
+    //     printk("ads_dump_key_regs failed: %d\n", ret);
+    //     return 0;
+    // }
 
-    ret = ads_send_cmd(CMD_START);
-    if (ret) {
-        printk("START cmd failed: %d\n", ret);
-        return 0;
-    }
+    // ret = ads_send_cmd(CMD_START);
+    // if (ret) {
+    //     printk("START cmd failed: %d\n", ret);
+    //     return 0;
+    // }
 
     k_sleep(K_MSEC(4));
 
@@ -596,32 +591,32 @@ int main(void)
             continue;
         }
 
-        ret = ads_wait_drdy_low_timeout_ms(1000);
-        if (ret) {
-            printk("DRDY timeout/error: %d\n", ret);
-            k_sleep(K_MSEC(10));
-            continue;
-        }
+        // ret = ads_wait_drdy_low_timeout_ms(1000);
+        // if (ret) {
+        //     printk("DRDY timeout/error: %d\n", ret);
+        //     k_sleep(K_MSEC(10));
+        //     continue;
+        // }
 
-        ret = ads_read_frame_rdata(frame);
-        if (ret) {
-            printk("RDATA read error: %d\n", ret);
-            k_sleep(K_MSEC(10));
-            continue;
-        }
+        // ret = ads_read_frame_rdata(frame);
+        // if (ret) {
+        //     printk("RDATA read error: %d\n", ret);
+        //     k_sleep(K_MSEC(10));
+        //     continue;
+        // }
 
         if ((sample_idx % STREAM_DECIMATION) == 0U) {
             build_binary_packet(pkt, sample_idx, frame);
             nus_send_binary(pkt, sizeof(pkt));
         }
 
-        if ((sample_idx % 250U) == 0U) {
-            int32_t ch1 = ads_decode24(&frame[3]);
-            printk("sample=%lu status=%02X%02X%02X ch1=%ld\n",
-                   (unsigned long)sample_idx,
-                   frame[0], frame[1], frame[2],
-                   (long)ch1);
-        }
+        // if ((sample_idx % 250U) == 0U) {
+        //     int32_t ch1 = ads_decode24(&frame[3]);
+        //     printk("sample=%lu status=%02X%02X%02X ch1=%ld\n",
+        //            (unsigned long)sample_idx,
+        //            frame[0], frame[1], frame[2],
+        //            (long)ch1);
+        // }
 
         sample_idx++;
     }
