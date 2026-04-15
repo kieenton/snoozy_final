@@ -7,6 +7,8 @@ add_subdirectory(drivers/ads1299)
 
 project(snoozy_final)
 
+set(APP_SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
 target_sources(app PRIVATE
     src/main.c
 )

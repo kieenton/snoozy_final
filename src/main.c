@@ -498,74 +498,74 @@ int main(void)
     k_sleep(K_MSEC(1500));
     printk("Starting ADS1299 BLE external CH1 stream...\n");
 
-    // if (!spi_is_ready_dt(&ads_spi)) {
-    //     printk("SPI device not ready\n");
-    //     return 0;
-    // }
+    if (!spi_is_ready_dt(&ads_spi)) {
+        printk("SPI device not ready\n");
+        return 0;
+    }
 
-    // ret = gpio_pin_configure_dt(&reset_pin, GPIO_OUTPUT_INACTIVE);
-    // if (ret) {
-    //     printk("reset configure failed: %d\n", ret);
-    //     return 0;
-    // }
+    ret = gpio_pin_configure_dt(&reset_pin, GPIO_OUTPUT_INACTIVE);
+    if (ret) {
+        printk("reset configure failed: %d\n", ret);
+        return 0;
+    }
 
-    // ret = gpio_pin_configure_dt(&start_pin, GPIO_OUTPUT_INACTIVE);
-    // if (ret) {
-    //     printk("start configure failed: %d\n", ret);
-    //     return 0;
-    // }
+    ret = gpio_pin_configure_dt(&start_pin, GPIO_OUTPUT_INACTIVE);
+    if (ret) {
+        printk("start configure failed: %d\n", ret);
+        return 0;
+    }
 
-    // ret = gpio_pin_configure_dt(&drdy_pin, GPIO_INPUT);
-    // if (ret) {
-    //     printk("drdy configure failed: %d\n", ret);
-    //     return 0;
-    // }
+    ret = gpio_pin_configure_dt(&drdy_pin, GPIO_INPUT);
+    if (ret) {
+        printk("drdy configure failed: %d\n", ret);
+        return 0;
+    }
 
-    // /*
-    //  * Keep START low; we will use SPI START command.
-    //  */
-    // gpio_pin_set_dt(&start_pin, 0);
+    /*
+     * Keep START low; we will use SPI START command.
+     */
+    gpio_pin_set_dt(&start_pin, 0);
 
-    // /*
-    //  * Hardware reset pulse.
-    //  * If your DTS marks the line as active low, gpio_pin_set_dt()
-    //  * handles that for you.
-    //  */
-    // gpio_pin_set_dt(&reset_pin, 1);
-    // k_sleep(K_MSEC(10));
-    // gpio_pin_set_dt(&reset_pin, 0);
-    // k_sleep(K_MSEC(50));
+    /*
+     * Hardware reset pulse.
+     * If your DTS marks the line as active low, gpio_pin_set_dt()
+     * handles that for you.
+     */
+    gpio_pin_set_dt(&reset_pin, 1);
+    k_sleep(K_MSEC(10));
+    gpio_pin_set_dt(&reset_pin, 0);
+    k_sleep(K_MSEC(50));
 
-    // ret = ads_send_cmd(CMD_RESET);
-    // if (ret) {
-    //     printk("CMD_RESET failed: %d\n", ret);
-    //     return 0;
-    // }
-    // k_sleep(K_MSEC(10));
+    ret = ads_send_cmd(CMD_RESET);
+    if (ret) {
+        printk("CMD_RESET failed: %d\n", ret);
+        return 0;
+    }
+    k_sleep(K_MSEC(10));
 
-    // ret = ads_print_id();
-    // if (ret) {
-    //     printk("ads_print_id failed: %d\n", ret);
-    //     return 0;
-    // }
+    ret = ads_print_id();
+    if (ret) {
+        printk("ads_print_id failed: %d\n", ret);
+        return 0;
+    }
 
-    // ret = ads_configure_external_ch1_mode();
-    // if (ret) {
-    //     printk("ads_configure_external_ch1_mode failed: %d\n", ret);
-    //     return 0;
-    // }
+    ret = ads_configure_external_ch1_mode();
+    if (ret) {
+        printk("ads_configure_external_ch1_mode failed: %d\n", ret);
+        return 0;
+    }
 
-    // ret = ads_dump_key_regs();
-    // if (ret) {
-    //     printk("ads_dump_key_regs failed: %d\n", ret);
-    //     return 0;
-    // }
+    ret = ads_dump_key_regs();
+    if (ret) {
+        printk("ads_dump_key_regs failed: %d\n", ret);
+        return 0;
+    }
 
-    // ret = ads_send_cmd(CMD_START);
-    // if (ret) {
-    //     printk("START cmd failed: %d\n", ret);
-    //     return 0;
-    // }
+    ret = ads_send_cmd(CMD_START);
+    if (ret) {
+        printk("START cmd failed: %d\n", ret);
+        return 0;
+    }
 
     k_sleep(K_MSEC(4));
 
@@ -591,19 +591,19 @@ int main(void)
             continue;
         }
 
-        // ret = ads_wait_drdy_low_timeout_ms(1000);
-        // if (ret) {
-        //     printk("DRDY timeout/error: %d\n", ret);
-        //     k_sleep(K_MSEC(10));
-        //     continue;
-        // }
+        ret = ads_wait_drdy_low_timeout_ms(1000);
+        if (ret) {
+            printk("DRDY timeout/error: %d\n", ret);
+            k_sleep(K_MSEC(10));
+            continue;
+        }
 
-        // ret = ads_read_frame_rdata(frame);
-        // if (ret) {
-        //     printk("RDATA read error: %d\n", ret);
-        //     k_sleep(K_MSEC(10));
-        //     continue;
-        // }
+        ret = ads_read_frame_rdata(frame);
+        if (ret) {
+            printk("RDATA read error: %d\n", ret);
+            k_sleep(K_MSEC(10));
+            continue;
+        }
 
         if ((sample_idx % STREAM_DECIMATION) == 0U) {
             build_binary_packet(pkt, sample_idx, frame);
