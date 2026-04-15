@@ -78,6 +78,9 @@ static const struct gpio_dt_spec start_pin =
 static const struct gpio_dt_spec drdy_pin =
     GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_drdy_gpios);
 
+static const struct gpio_dt_spec pwdwn_pin =
+    GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_pwdwn_gpios);
+
 static struct bt_conn *current_conn;
 static bool ble_ready;
 static bool stream_enabled;
@@ -495,7 +498,7 @@ int main(void)
     uint8_t pkt[PACKET_SIZE];
     uint32_t sample_idx = 0;
 
-    k_sleep(K_MSEC(1500));
+    k_sleep(K_MSEC(10000));
     printk("Starting ADS1299 BLE external CH1 stream...\n");
 
     if (!spi_is_ready_dt(&ads_spi)) {
@@ -521,6 +524,15 @@ int main(void)
         return 0;
     }
 
+    ret = gpio_pin_configure_dt(&pwdwn_pin, GPIO_OUTPUT_INACTIVE);
+    if (ret) {
+        printk("FAIL: pwdwn configure failed: %d\n", ret);
+        return 0;
+    }
+    gpio_pin_set_dt(&pwdwn_pin, 0);  // bring chip out of power down
+    k_sleep(K_MSEC(100));
+    printk("OK: PWDN high\n");
+
     /*
      * Keep START low; we will use SPI START command.
      */
@@ -532,15 +544,16 @@ int main(void)
      * handles that for you.
      */
     gpio_pin_set_dt(&reset_pin, 1);
-    k_sleep(K_MSEC(10));
+    k_sleep(K_MSEC(100));
     gpio_pin_set_dt(&reset_pin, 0);
-    k_sleep(K_MSEC(50));
+    k_sleep(K_MSEC(100));
 
     ret = ads_send_cmd(CMD_RESET);
     if (ret) {
         printk("CMD_RESET failed: %d\n", ret);
         return 0;
     }
+    printk("OK: reset sequence done\n");
     k_sleep(K_MSEC(10));
 
     ret = ads_print_id();
@@ -610,13 +623,13 @@ int main(void)
             nus_send_binary(pkt, sizeof(pkt));
         }
 
-        // if ((sample_idx % 250U) == 0U) {
-        //     int32_t ch1 = ads_decode24(&frame[3]);
-        //     printk("sample=%lu status=%02X%02X%02X ch1=%ld\n",
-        //            (unsigned long)sample_idx,
-        //            frame[0], frame[1], frame[2],
-        //            (long)ch1);
-        // }
+        if ((sample_idx % 250U) == 0U) {
+            int32_t ch1 = ads_decode24(&frame[3]);
+            printk("sample=%lu status=%02X%02X%02X ch1=%ld\n",
+                   (unsigned long)sample_idx,
+                   frame[0], frame[1], frame[2],
+                   (long)ch1);
+        }
 
         sample_idx++;
     }
