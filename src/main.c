@@ -498,9 +498,11 @@ int main(void)
     uint8_t pkt[PACKET_SIZE];
     uint32_t sample_idx = 0;
 
-    k_sleep(K_MSEC(10000));
-    printk("Starting ADS1299 BLE external CH1 stream...\n");
-
+    k_sleep(K_MSEC(5000));
+    while(1){
+        printk("Starting ADS1299 BLE external CH1 stream...\n");
+        k_sleep(K_MSEC(500));
+    }
     if (!spi_is_ready_dt(&ads_spi)) {
         printk("SPI device not ready\n");
         return 0;

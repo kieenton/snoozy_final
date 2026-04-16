@@ -86,7 +86,7 @@ int main(void)
 {
     int ret;
 
-    k_sleep(K_MSEC(2000));
+    k_sleep(K_MSEC(10000));
     printk("Starting Zephyr ADS1299 Test...\n");
 
     if (!spi_is_ready_dt(&ads_spi)) {
@@ -110,7 +110,6 @@ int main(void)
         printk("start configure failed: %d\n", ret);
         return 0;
     }
-
     /* For active-low reset: logical 1 asserts reset low, logical 0 releases it high */
     gpio_pin_set_dt(&reset_pin, 1);
     k_sleep(K_MSEC(10));
