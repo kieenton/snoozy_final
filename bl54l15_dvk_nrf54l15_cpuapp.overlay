@@ -4,8 +4,8 @@
 
 &spi20 {
     status = "okay";
-    cs-gpios =  <&gpio2 5 GPIO_ACTIVE_LOW>, // 5 for 
-                <&gpio2 10 GPIO_ACTIVE_LOW>;
+    cs-gpios =  <&gpio2 10 GPIO_ACTIVE_LOW>, // 5 for 
+                <&gpio2 5 GPIO_ACTIVE_LOW>;
     pinctrl-0 = <&spi20_default>;
     pinctrl-1 = <&spi20_sleep>;
     pinctrl-names = "default", "sleep";
@@ -161,5 +161,13 @@
 };
 
 &mx25r64 {
+    status = "disabled";
+};
+
+&uart20 {
+    status = "disabled";
+};
+
+&pwm20 {
     status = "disabled";
 };
