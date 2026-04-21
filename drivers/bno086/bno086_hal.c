@@ -39,6 +39,9 @@ static const struct gpio_dt_spec int_pin =
 static const struct gpio_dt_spec rst_pin =
     GPIO_DT_SPEC_GET(BNO_NODE, rst_gpios);
 
+static const struct gpio_dt_spec boot_pin =
+    GPIO_DT_SPEC_GET(BNO_NODE, boot_gpios);
+
 /* ------------------------------------------------------------------ */
 /* Internal state                                                       */
 /* ------------------------------------------------------------------ */
@@ -73,6 +76,13 @@ static int hal_open(sh2_Hal_t *self)
 {
     ARG_UNUSED(self);
     int ret;
+
+    /* BOOT high = normal sensor hub mode (not DFU bootloader) */
+    ret = gpio_pin_configure_dt(&boot_pin, GPIO_OUTPUT_INACTIVE);
+    if (ret) {
+        printk("BNO086: boot configure failed: %d\n", ret);
+        return ret;
+    }
 
     /* Configure RST as output, assert reset */
     ret = gpio_pin_configure_dt(&rst_pin, GPIO_OUTPUT_ACTIVE);
@@ -135,7 +145,7 @@ static int hal_read(sh2_Hal_t *self,
 
     /* Only read when HINT (INT pin) is asserted low */
     int hint = gpio_pin_get_dt(&int_pin);
-    if (hint != 0) {
+    if (hint <= 0) {
         return 0;
     }
 

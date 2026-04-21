@@ -10,6 +10,8 @@
 #include <zephyr/bluetooth/uuid.h>
 #include <zephyr/bluetooth/gatt.h>
 #include <zephyr/bluetooth/hci.h>
+#include <zephyr/logging/log.h>
+LOG_MODULE_REGISTER(gpio_test, LOG_LEVEL_DBG);
 
 #include <bluetooth/services/nus.h>
 
@@ -527,7 +529,11 @@ int main(void)
         printk("FAIL: pwdwn configure failed: %d\n", ret);
         return 0;
     }
-    gpio_pin_set_dt(&pwdwn_pin, 1);  // bring chip out of power down
+    if (!device_is_ready(pwdwn_pin.port)) { LOG_ERR("pwdwn port not ready"); return -1; }
+    if (!device_is_ready(reset_pin.port))   { LOG_ERR("rst port not ready");   return -1; }
+    if (!device_is_ready(start_pin.port)) { LOG_ERR("start port not ready"); return -1; }
+    if (!device_is_ready(drdy_pin.port))  { LOG_ERR("drdy port not ready");  return -1; }
+    gpio_pin_set_dt(&pwdwn_pin, 0);  // bring chip out of power down
     k_sleep(K_MSEC(100));
     printk("OK: PWDN high\n");
 
@@ -541,9 +547,9 @@ int main(void)
      * If your DTS marks the line as active low, gpio_pin_set_dt()
      * handles that for you.
      */
-    gpio_pin_set_dt(&reset_pin, 0);
-    k_sleep(K_MSEC(100));
     gpio_pin_set_dt(&reset_pin, 1);
+    k_sleep(K_MSEC(100));
+    gpio_pin_set_dt(&reset_pin, 0);
     k_sleep(K_MSEC(100));
 
     ret = ads_send_cmd(CMD_RESET);

@@ -4,6 +4,5 @@ config BNO086
     bool "BNO086 IMU driver"
     depends on SPI
     depends on GPIO
-    select BNO086_TRIGGER_NONE
     help
       Enable the BNO086 IMU driver.

@@ -1,3 +1,5 @@
+if(CONFIG_BNO086)
+
 zephyr_library()
 
 add_dependencies(${ZEPHYR_CURRENT_LIBRARY} offsets_h)
@@ -10,3 +12,7 @@ zephyr_library_sources(
     sh2_util.c
     shtp.c
 )
+
+target_link_libraries(app PRIVATE ${ZEPHYR_CURRENT_LIBRARY})
+
+endif()

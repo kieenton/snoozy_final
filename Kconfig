@@ -6,6 +6,8 @@
 
 source "Kconfig.zephyr"
 
+rsource "drivers/Kconfig"
+
 menu "Snoozy NUS BLE GATT Service"
 
 config BT_NUS_THREAD_STACK_SIZE
