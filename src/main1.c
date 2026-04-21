@@ -21,6 +21,9 @@ static const struct gpio_dt_spec reset_pin =
 static const struct gpio_dt_spec start_pin =
     GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_start_gpios);
 
+static const struct gpio_dt_spec pwdwn_pin =
+    GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_pwdwn_gpios);
+
 static int read_id_register(void)
 {
     int ret;
@@ -73,10 +76,10 @@ static int read_id_register(void)
     printk("RX bytes: %02X %02X %02X\n", rx_read[0], rx_read[1], rx_read[2]);
     printk("ADS1299 ID Register returned: 0x%02X\n", rx_read[2]);
 
-    if (rx_read[2] == 0x3E) {
+    if (rx_read[2] == 0x3C) {
         printk("SUCCESS! Pure C Zephyr SPI is working.\n");
     } else {
-        printk("ERROR: Expected 0x3E. Check wiring.\n");
+        printk("ERROR: Expected 0x3C. Check wiring.\n");
     }
 
     return 0;
@@ -86,7 +89,7 @@ int main(void)
 {
     int ret;
 
-    k_sleep(K_MSEC(10000));
+    k_sleep(K_MSEC(5000));
     printk("Starting Zephyr ADS1299 Test...\n");
 
     if (!spi_is_ready_dt(&ads_spi)) {
@@ -110,6 +113,10 @@ int main(void)
         printk("start configure failed: %d\n", ret);
         return 0;
     }
+    
+    gpio_pin_set_dt(&pwdwn_pin, 1);  // bring chip out of power down
+    k_sleep(K_MSEC(50));
+    printk("OK: PWDN high\n");
     /* For active-low reset: logical 1 asserts reset low, logical 0 releases it high */
     gpio_pin_set_dt(&reset_pin, 1);
     k_sleep(K_MSEC(10));
