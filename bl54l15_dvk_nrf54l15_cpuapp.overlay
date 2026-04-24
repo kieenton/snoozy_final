@@ -12,7 +12,7 @@
     ads1299: ads1299@0 {
         compatible = "ti,ads1299";          /* custom binding you'll define */
         reg = <0>;                           /* index into cs-gpios */
-        spi-max-frequency = <4000000>;       /* ADS1299 max 4 MHz */
+        spi-max-frequency = <1000000>;       /* ADS1299 max 4 MHz */
         label = "ADS1299";
         start-gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
         rst-gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
