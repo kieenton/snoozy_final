@@ -14,6 +14,7 @@ static const struct gpio_dt_spec start = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_
 static const struct gpio_dt_spec drdy = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_drdy_gpios);
 static const struct gpio_dt_spec pwdwn = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_pwdwn_gpios);
 static const struct gpio_dt_spec cs    = GPIO_DT_SPEC_GET_BY_IDX(DT_NODELABEL(spi20), cs_gpios, 0);
+//static const struct gpio_dt_spec mosi = GPIO_DT_SPEC_GET(ZEPHYR_USER_NODE, ads_mosi_gpios);
 
 int main(void)
 {
@@ -26,6 +27,7 @@ int main(void)
     if (!device_is_ready(start.port)) { LOG_ERR("start port not ready"); return -1; }
     if (!device_is_ready(cs.port))    { LOG_ERR("cs port not ready");    return -1; }
     if (!device_is_ready(drdy.port))  { LOG_ERR("drdy port not ready");  return -1; }
+    //if (!device_is_ready(mosi.port))  { LOG_ERR("drdy port not ready");  return -1; }
 
     /* Configure outputs — GPIO_OUTPUT_ACTIVE drives pin to its active state.
      * All pins are GPIO_ACTIVE_LOW in DT, so ACTIVE = physical LOW.
@@ -34,6 +36,7 @@ int main(void)
     gpio_pin_configure_dt(&rst,   GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&start, GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&cs,    GPIO_OUTPUT_INACTIVE);
+    //gpio_pin_configure_dt(&mosi,    GPIO_OUTPUT_INACTIVE);
 
     /* Configure input */
     gpio_pin_configure_dt(&drdy, GPIO_INPUT);
@@ -54,8 +57,11 @@ int main(void)
         LOG_INF("CS: physical LOW  (P2.05)"); gpio_pin_set_dt(&cs, 1); k_sleep(K_MSEC(500));
         LOG_INF("CS: physical HIGH (P2.05)"); gpio_pin_set_dt(&cs, 0); k_sleep(K_MSEC(500));
 
-        LOG_INF("DRDY = %d (P0.01)", gpio_pin_get_dt(&drdy));
+        //LOG_INF("MOSI: physical LOW  (P2.04)"); gpio_pin_set_dt(&mosi, 1); k_sleep(K_MSEC(500));
+        //LOG_INF("MOSI: physical HIGH (P2.04)"); gpio_pin_set_dt(&mosi, 0); k_sleep(K_MSEC(500));
 
+        LOG_INF("DRDY = %d (P0.01)", gpio_pin_get_dt(&drdy));
+//
         LOG_INF("--- next cycle ---");
         k_sleep(K_MSEC(1000));
     }

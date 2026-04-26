@@ -114,7 +114,8 @@ int main(void)
         return 0;
     }
     
-    gpio_pin_set_dt(&pwdwn_pin, 1);  // bring chip out of power down
+    gpio_pin_set_dt(&pwdwn_pin, 0);  // bring chip out of power down
+    gpio_pin_set_dt(&reset_pin, 0);  // bring reset high
     k_sleep(K_MSEC(50));
     printk("OK: PWDN high\n");
     /* For active-low reset: logical 1 asserts reset low, logical 0 releases it high */
