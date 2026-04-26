@@ -42,6 +42,10 @@
     };
 };
 
+/* Board enables i2c20 on P0.00/P0.03, same pins we use for i2c21 — disable it */
+/delete-node/ &{/pin-controller/i2c20_default/group1/};
+/delete-node/ &{/pin-controller/i2c20_sleep/group1/};
+
 /delete-node/ &{/pin-controller/uart20_default/group1/};
 /delete-node/ &{/pin-controller/uart20_default/group2/};
 
@@ -57,6 +61,10 @@
 
         /* 10s hold = hard reset, handled entirely in PMIC hardware */
         long-press-reset = "one-button";
+
+        /* GPIO0 (P2.03) configured as GPO_IRQ output → nRF54L15 interrupt input */
+        host-int-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
+        pmic-int-pin = <0>;
 
         npm1304_ek_gpio: gpio-controller {
             compatible = "nordic,npm1304-gpio";
@@ -100,12 +108,8 @@
         npm1304_ek_buttons: buttons {
             compatible = "gpio-keys";
 
-            /* Toggle switch on SHPHLD — press in = on, press out = off */
-            pmic_shphld: pmic_shphld {
-                gpios = <&npm1304_ek_gpio 0 GPIO_ACTIVE_LOW>;
-                label = "Power toggle (SHPHLD)";
-                zephyr,code = <INPUT_KEY_POWER>;
-            };
+            /* SHPHLD is detected via NPM13XX_EVENT_SHIPHOLD_RELEASE in firmware,
+             * not as a gpio-keys entry, because GPIO0 is reserved as GPO_IRQ. */
 
             pmic_button1: pmic_button_1 {
                 gpios = <&npm1304_ek_gpio 1 GPIO_ACTIVE_LOW>;
@@ -160,6 +164,10 @@
     };
 };
 /delete-node/ &{/pin-controller/spi00_default/group1/};
+
+&i2c20 {
+    status = "disabled";
+};
 
 &spi00 {
     /delete-property/ cs-gpios;

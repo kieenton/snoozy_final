@@ -113,6 +113,12 @@ int main(void)
         printk("start configure failed: %d\n", ret);
         return 0;
     }
+
+    ret = gpio_pin_configure_dt(&pwdwn_pin, GPIO_OUTPUT_INACTIVE);
+    if (ret) {
+        printk("pwdwn configure failed: %d\n", ret);
+        return 0;
+    }
     
     gpio_pin_set_dt(&pwdwn_pin, 0);  // bring chip out of power down
     gpio_pin_set_dt(&reset_pin, 0);  // bring reset high
