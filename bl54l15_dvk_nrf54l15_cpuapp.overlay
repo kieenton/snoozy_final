@@ -2,42 +2,60 @@
 #include <zephyr/dt-bindings/input/input-event-codes.h>
 #include <zephyr/dt-bindings/pinctrl/nrf-pinctrl.h>
 
-&spi20 {
+/*
+ * spi00 has no default-gpio-port restriction and is proven to drive GPIO2
+ * pins (DVK used it for NOR flash on P2.01/P2.02/P2.04).  spi20 has
+ * default-gpio-port = gpio1 and cross-domain MOSI on P2.04 does not work.
+ * Move ADS1299 and BNO086 to spi00.
+ */
+
+/* Replace spi00 pinctrl with our pin assignments (P2.04=MOSI, P2.02=MISO) */
+/delete-node/ &{/pin-controller/spi00_default/group1/};
+/delete-node/ &{/pin-controller/spi00_sleep/group1/};
+
+&spi00 {
     status = "okay";
-    cs-gpios =  <&gpio2 10 GPIO_ACTIVE_LOW>, // 5 for 
-                <&gpio2 5 GPIO_ACTIVE_LOW>;
-    pinctrl-0 = <&spi20_default>;
-    pinctrl-1 = <&spi20_sleep>;
-    pinctrl-names = "default", "sleep";
+    cs-gpios =  <&gpio2 10 GPIO_ACTIVE_LOW>,   /* ADS1299 CS */
+                <&gpio2 5  GPIO_ACTIVE_LOW>;    /* BNO086  CS */
+    /* pinctrl-0/1 already point to spi00_default/spi00_sleep from board DTS */
+
     ads1299: ads1299@0 {
-        compatible = "ti,ads1299";          /* custom binding you'll define */
-        reg = <0>;                           /* index into cs-gpios */
-        spi-max-frequency = <4000000>;       /* ADS1299 max 4 MHz */
+        compatible = "ti,ads1299";
+        reg = <0>;
+        spi-max-frequency = <4000000>;
         label = "ADS1299";
         start-gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
-        rst-gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
+        rst-gpios   = <&gpio1 5 GPIO_ACTIVE_LOW>;
         pwdwn-gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
-        drdy-gpios = <&gpio0 1 GPIO_ACTIVE_LOW>;
-
+        drdy-gpios  = <&gpio0 1 GPIO_ACTIVE_LOW>;
     };
 
     bno086: bno086@1 {
-        compatible = "ceva,bno086";          /* custom binding you'll define */
-        reg = <1>;                           /* index into cs-gpios */
-        spi-max-frequency = <3000000>;       /* BNO086 max 3 MHz */
+        compatible = "ceva,bno086";
+        reg = <1>;
+        spi-max-frequency = <3000000>;
         label = "BNO086";
-        int-gpios = <&gpio1 3 GPIO_ACTIVE_LOW>;
-        rst-gpios = <&gpio1 2 GPIO_ACTIVE_LOW>;
+        int-gpios  = <&gpio1 3 GPIO_ACTIVE_LOW>;
+        rst-gpios  = <&gpio1 2 GPIO_ACTIVE_LOW>;
         boot-gpios = <&gpio1 7 GPIO_ACTIVE_LOW>;
     };
 };
 
+/* Disable spi20 — was used before but cross-domain MOSI doesn't work */
+&spi20 {
+    status = "disabled";
+};
+
+/* Disable the on-board NOR flash that was on spi00 */
+&mx25r64 {
+    status = "disabled";
+};
+
 / {
     zephyr,user {
-        // pmic-gpios = <&pmic 0 0>; // TODO: if we need to use pmic gpio in app, instantiate them here.
         ads_reset_gpios = <&gpio1 5 GPIO_ACTIVE_LOW>;
         ads_start_gpios = <&gpio1 4 GPIO_ACTIVE_LOW>;
-        ads_drdy_gpios  = <&gpio0 1 GPIO_ACTIVE_LOW>;  /* replace X with your DRDY pin */
+        ads_drdy_gpios  = <&gpio0 1 GPIO_ACTIVE_LOW>;
         ads_pwdwn_gpios = <&gpio1 6 GPIO_ACTIVE_LOW>;
     };
 };
@@ -59,7 +77,6 @@
         compatible = "nordic,npm1304";
         reg = <0x6b>;
 
-        /* 10s hold = hard reset, handled entirely in PMIC hardware */
         long-press-reset = "one-button";
 
         /* GPIO0 (P2.03) configured as GPO_IRQ output → nRF54L15 interrupt input */
@@ -108,9 +125,6 @@
         npm1304_ek_buttons: buttons {
             compatible = "gpio-keys";
 
-            /* SHPHLD is detected via NPM13XX_EVENT_SHIPHOLD_RELEASE in firmware,
-             * not as a gpio-keys entry, because GPIO0 is reserved as GPO_IRQ. */
-
             pmic_button1: pmic_button_1 {
                 gpios = <&npm1304_ek_gpio 1 GPIO_ACTIVE_LOW>;
                 label = "Pmic button switch 1";
@@ -133,28 +147,29 @@
 };
 
 &pinctrl {
-    spi20_default: spi20_default {
+    /* spi00: P2.01=SCK, P2.04=MOSI, P2.02=MISO */
+    spi00_default {
         group1 {
-            psels = <NRF_PSEL(SPIM_SCK, 2, 1)>,
-                    <NRF_PSEL(SPIM_MISO, 2, 2)>,
-                    <NRF_PSEL(SPIM_MOSI, 2, 4)>;
+            psels = <NRF_PSEL(SPIM_SCK,  2, 1)>,
+                    <NRF_PSEL(SPIM_MOSI, 2, 4)>,
+                    <NRF_PSEL(SPIM_MISO, 2, 2)>;
         };
     };
-    spi20_sleep: spi20_sleep {        /* ← entire sleep state was missing */
+    spi00_sleep {
         group1 {
-            psels = <NRF_PSEL(SPIM_SCK, 2, 1)>,
-                    <NRF_PSEL(SPIM_MISO, 2, 2)>,
-                    <NRF_PSEL(SPIM_MOSI, 2, 4)>;
+            psels = <NRF_PSEL(SPIM_SCK,  2, 1)>,
+                    <NRF_PSEL(SPIM_MOSI, 2, 4)>,
+                    <NRF_PSEL(SPIM_MISO, 2, 2)>;
             low-power-enable;
         };
     };
+
     i2c21_default: i2c21_default {
         group1 {
             psels = <NRF_PSEL(TWIM_SDA, 0, 0)>,
                     <NRF_PSEL(TWIM_SCL, 0, 3)>;
         };
     };
-
     i2c21_sleep: i2c21_sleep {
         group1 {
             psels = <NRF_PSEL(TWIM_SDA, 0, 0)>,
@@ -163,18 +178,8 @@
         };
     };
 };
-/delete-node/ &{/pin-controller/spi00_default/group1/};
 
 &i2c20 {
-    status = "disabled";
-};
-
-&spi00 {
-    /delete-property/ cs-gpios;
-    status = "disabled";
-};
-
-&mx25r64 {
     status = "disabled";
 };
 

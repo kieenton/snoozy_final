@@ -15,6 +15,7 @@ LOG_MODULE_REGISTER(gpio_test, LOG_LEVEL_DBG);
 
 #include <bluetooth/services/nus.h>
 
+#include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/mfd/npm13xx.h>
 
 #include <errno.h>
@@ -619,6 +620,14 @@ int main(void)
         printk("SHPHLD hibernate callback registered\n");
     } else {
         printk("WARN: pmic not ready, SHPHLD power-off disabled\n");
+        const struct device *i2c21 = DEVICE_DT_GET(DT_NODELABEL(i2c21));
+        printk("i2c21 ready: %d\n", device_is_ready(i2c21));
+        if (device_is_ready(i2c21)) {
+            uint8_t addr_buf[2] = {0x0B, 0x00};
+            uint8_t val = 0;
+            int err = i2c_write_read(i2c21, 0x6B, addr_buf, 2, &val, 1);
+            printk("PMIC I2C probe 0x6B: err=%d val=0x%02X\n", err, val);
+        }
     }
 
     ret = ble_init();
