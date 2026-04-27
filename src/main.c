@@ -82,8 +82,8 @@ LOG_MODULE_REGISTER(ble_streamer, LOG_LEVEL_DBG);
 static struct bt_conn *current_conn;
 static bool            stream_enabled;
 
-/* Pointer to active snippet's raw channel data [ch][sample] */
-static const float * const *active_channels;
+/* Pointer to active snippet's pre-windowed data [ch][win][sample] */
+static const float (*active_windows)[EEG_SNIPPET_N_WINDOWS][EEG_SNIPPET_WINDOW_SAMPLES];
 
 K_SEM_DEFINE(start_sem, 0, 1);
 
@@ -128,19 +128,16 @@ static int nus_send_all(struct bt_conn *conn, const char *str, size_t len)
 }
 
 /*
- * build_window_csv() — formats one window for both channels into csv_buf.
+ * build_window_csv() — formats one pre-windowed window for both channels into csv_buf.
  *
- * context_start: first sample index of the current 2560-sample context
- * win:           window index within the context (0–5)
+ * win: window index (0–5)
  *
- * Layout: ch0[win_start..win_start+1279], ch1[win_start..win_start+1279]
+ * Layout: ch0[0..1279], ch1[0..1279]
  */
-static size_t build_window_csv(int context_start, int win)
+static size_t build_window_csv(int win)
 {
-    int win_start = context_start + (win * WINDOW_STEP);
     size_t written = 0;
 
-    /* Opening bracket */
     csv_buf[written++] = '[';
 
     for (int ch = 0; ch < EEG_SNIPPET_N_CHANNELS; ch++) {
@@ -148,7 +145,7 @@ static size_t build_window_csv(int context_start, int win)
             int n = snprintf(csv_buf + written, CSV_BUF_SIZE - written,
                              "%s%.3f",
                              (written > 1) ? "," : "",
-                             (double)active_channels[ch][win_start + s]);
+                             (double)active_windows[ch][win][s]);
             if (n < 0 || (size_t)n >= CSV_BUF_SIZE - written) {
                 break;
             }
@@ -156,7 +153,6 @@ static size_t build_window_csv(int context_start, int win)
         }
     }
 
-    /* Closing bracket */
     csv_buf[written++] = ']';
     csv_buf[written] = '\0';
     return written;
@@ -172,35 +168,17 @@ static void stream_thread_fn(void *p1, void *p2, void *p3)
         k_sem_take(&start_sem, K_FOREVER);
         LOG_INF("Streaming started");
 
-        for (int ctx = 0; ctx < N_CONTEXTS && stream_enabled && current_conn; ctx++) {
+        for (int win = 0; win < EEG_SNIPPET_N_WINDOWS && stream_enabled && current_conn; win++) {
 
-            int context_start = ctx * CONTEXT_SAMPLES;
-            LOG_INF("Context %d/%d (samples [%d..%d])",
-                    ctx, N_CONTEXTS - 1,
-                    context_start, context_start + CONTEXT_SAMPLES - 1);
+            LOG_INF("Window %d/%d", win, EEG_SNIPPET_N_WINDOWS - 1);
 
-            /* Send all 6 windows spaced evenly over 10s (~1666ms apart) */
-            for (int win = 0; win < N_WINDOWS && stream_enabled && current_conn; win++) {
+            size_t len = build_window_csv(win);
 
-                int win_start = context_start + (win * WINDOW_STEP);
-                LOG_INF("  Window %d: samples [%d..%d]",
-                        win, win_start, win_start + WINDOW_SAMPLES - 1);
-
-                size_t len = build_window_csv(context_start, win);
-
-                if (nus_send_all(current_conn, csv_buf, len) != 0) {
-                    goto stream_stopped;
-                }
-
-                /* Space out sends — skip delay after last window of last context */
-                if (win < N_WINDOWS - 1 && stream_enabled && current_conn) {
-                    k_msleep(WINDOW_INTERVAL_MS);
-                }
+            if (nus_send_all(current_conn, csv_buf, len) != 0) {
+                goto stream_stopped;
             }
 
-            /* Wait remaining time before next context */
-            if (ctx < N_CONTEXTS - 1 && stream_enabled && current_conn) {
-                LOG_INF("Next context in %d ms", WINDOW_INTERVAL_MS);
+            if (win < EEG_SNIPPET_N_WINDOWS - 1 && stream_enabled && current_conn) {
                 k_msleep(WINDOW_INTERVAL_MS);
             }
         }
@@ -222,14 +200,14 @@ static void nus_rx_cb(struct bt_conn *conn, const uint8_t *data, uint16_t len)
 {
     if (len >= 16 && memcmp(data, "start_meditation", 16) == 0) {
         if (!stream_enabled) {
-            active_channels = eeg_meditation_channels;
+            active_windows = eeg_meditation_windows;
             stream_enabled = true;
             LOG_INF("Snippet: meditation");
             k_sem_give(&start_sem);
         }
     } else if (len >= 20 && memcmp(data, "start_mind_wandering", 20) == 0) {
         if (!stream_enabled) {
-            active_channels = eeg_mind_wandering_channels;
+            active_windows = eeg_mind_wandering_windows;
             stream_enabled = true;
             LOG_INF("Snippet: mind_wandering");
             k_sem_give(&start_sem);
