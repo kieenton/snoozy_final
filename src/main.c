@@ -57,7 +57,7 @@ LOG_MODULE_REGISTER(ble_streamer, LOG_LEVEL_DBG);
 /* -------------------------------------------------------------------------
  * Streaming config
  * ---------------------------------------------------------------------- */
-#define BURST_INTERVAL_MS   10000   /* 10s between contexts                  */
+#define BURST_INTERVAL_MS   1666   /* 10s between contexts                  */
 #define NUS_MTU_FALLBACK    20      /* used until MTU exchange completes     */
 #define TX_RETRY_DELAY_MS   5       /* back-off when TX queue full           */
 
@@ -82,8 +82,8 @@ LOG_MODULE_REGISTER(ble_streamer, LOG_LEVEL_DBG);
 static struct bt_conn *current_conn;
 static bool            stream_enabled;
 
-/* Pointer to active snippet's pre-windowed data [ch][win][sample] */
-static const float (*active_windows)[EEG_SNIPPET_N_WINDOWS][EEG_SNIPPET_WINDOW_SAMPLES];
+/* Pointer to active snippet's pre-windowed data [ctx][ch][win][sample] */
+static const float (*active_windows)[EEG_SNIPPET_N_CHANNELS][EEG_SNIPPET_N_WINDOWS][EEG_SNIPPET_WINDOW_SAMPLES];
 
 K_SEM_DEFINE(start_sem, 0, 1);
 
@@ -130,11 +130,11 @@ static int nus_send_all(struct bt_conn *conn, const char *str, size_t len)
 /*
  * build_window_csv() — formats one pre-windowed window for both channels into csv_buf.
  *
- * win: window index (0–5)
+ * ctx: context index (0–2), win: window index (0–5)
  *
  * Layout: ch0[0..1279], ch1[0..1279]
  */
-static size_t build_window_csv(int win)
+static size_t build_window_csv(int ctx, int win)
 {
     size_t written = 0;
 
@@ -145,7 +145,7 @@ static size_t build_window_csv(int win)
             int n = snprintf(csv_buf + written, CSV_BUF_SIZE - written,
                              "%s%.3f",
                              (written > 1) ? "," : "",
-                             (double)active_windows[ch][win][s]);
+                             (double)active_windows[ctx][ch][win][s]);
             if (n < 0 || (size_t)n >= CSV_BUF_SIZE - written) {
                 break;
             }
@@ -168,18 +168,27 @@ static void stream_thread_fn(void *p1, void *p2, void *p3)
         k_sem_take(&start_sem, K_FOREVER);
         LOG_INF("Streaming started");
 
-        for (int win = 0; win < EEG_SNIPPET_N_WINDOWS && stream_enabled && current_conn; win++) {
+        for (int ctx = 0; ctx < EEG_SNIPPET_N_CONTEXTS && stream_enabled && current_conn; ctx++) {
 
-            LOG_INF("Window %d/%d", win, EEG_SNIPPET_N_WINDOWS - 1);
+            LOG_INF("Context %d/%d", ctx, EEG_SNIPPET_N_CONTEXTS - 1);
 
-            size_t len = build_window_csv(win);
+            for (int win = 0; win < EEG_SNIPPET_N_WINDOWS && stream_enabled && current_conn; win++) {
 
-            if (nus_send_all(current_conn, csv_buf, len) != 0) {
-                goto stream_stopped;
+                LOG_INF("  Window %d/%d", win, EEG_SNIPPET_N_WINDOWS - 1);
+
+                size_t len = build_window_csv(ctx, win);
+
+                if (nus_send_all(current_conn, csv_buf, len) != 0) {
+                    goto stream_stopped;
+                }
+
+                if (win < EEG_SNIPPET_N_WINDOWS - 1 && stream_enabled && current_conn) {
+                    k_msleep(WINDOW_INTERVAL_MS);
+                }
             }
 
-            if (win < EEG_SNIPPET_N_WINDOWS - 1 && stream_enabled && current_conn) {
-                k_msleep(WINDOW_INTERVAL_MS);
+            if (ctx < EEG_SNIPPET_N_CONTEXTS - 1 && stream_enabled && current_conn) {
+                k_msleep(BURST_INTERVAL_MS);
             }
         }
 
