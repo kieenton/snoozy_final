@@ -25,7 +25,8 @@
 /* Devicetree bindings                                                  */
 /* ------------------------------------------------------------------ */
 
-#define BNO_NODE DT_NODELABEL(bno086)
+#define BNO_NODE   DT_NODELABEL(bno086)
+#define SPI00_NODE DT_NODELABEL(spi00)
 
 static const struct spi_dt_spec bno_spi =
     SPI_DT_SPEC_GET(BNO_NODE,
@@ -111,10 +112,13 @@ static int hal_open(sh2_Hal_t *self)
     gpio_pin_set_dt(&rst_pin, 1);   /* assert reset (active low) */
     k_sleep(K_MSEC(10));
     gpio_pin_set_dt(&rst_pin, 0);   /* deassert reset */
-    k_sleep(K_MSEC(50));            /* wait for boot */
+    k_sleep(K_MSEC(100));           /* datasheet: ~90 ms init before H_INTN asserts */
 
     int_asserted = false;
-    printk("BNO086: HAL open\n");
+
+    /* Diagnostic: show INT state right after reset — should be 1 (asserted) if BNO is alive */
+    int post_rst_hint = gpio_pin_get_dt(&int_pin);
+    printk("BNO086: HAL open — INT after reset = %d (want 1)\n", post_rst_hint);
     return 0;
 }
 
@@ -145,6 +149,16 @@ static int hal_read(sh2_Hal_t *self,
 
     /* Only read when HINT (INT pin) is asserted low */
     int hint = gpio_pin_get_dt(&int_pin);
+
+    static uint32_t read_calls;
+    static uint32_t int_seen;
+    read_calls++;
+    if (read_calls <= 20 || hint > 0) {
+        if (hint > 0) int_seen++;
+        printk("BNO086: hal_read #%u INT=%d (total INT seen=%u)\n",
+               read_calls, hint, int_seen);
+    }
+
     if (hint <= 0) {
         return 0;
     }
@@ -160,7 +174,7 @@ static int hal_read(sh2_Hal_t *self,
      * We do it in one transfer up to len bytes; the sh2 library
      * passes a buffer large enough for SH2_HAL_MAX_TRANSFER_IN (1024).
      */
-    uint8_t tx[SH2_HAL_MAX_TRANSFER_IN];
+    static uint8_t tx[SH2_HAL_MAX_TRANSFER_IN];
     memset(tx, 0, len);
 
     struct spi_buf     rx_buf  = { .buf = pBuffer, .len = len };
@@ -174,6 +188,15 @@ static int hal_read(sh2_Hal_t *self,
         printk("BNO086: SPI read error %d\n", ret);
         return 0;
     }
+
+    /* CS readback: after SPI transaction CS should be inactive (logical 1 = high).
+     * If this prints 0, the SPI driver never asserted/released GPIO2.5 — wrong pin. */
+    static const struct gpio_dt_spec bno_cs_dbg =
+        GPIO_DT_SPEC_GET_BY_IDX(SPI00_NODE, cs_gpios, 1);
+    printk("BNO086: CS(gpio2.5) after txn = %d (want 1=inactive)  "
+           "SPI rx[0..3] = %02X %02X %02X %02X\n",
+           gpio_pin_get_dt(&bno_cs_dbg),
+           pBuffer[0], pBuffer[1], pBuffer[2], pBuffer[3]);
 
     /* Length is encoded in the first two bytes of the SHTP header */
     uint16_t payload_len = ((uint16_t)pBuffer[0]) |

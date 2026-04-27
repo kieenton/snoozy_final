@@ -9,9 +9,23 @@
  * Move ADS1299 and BNO086 to spi00.
  */
 
-/* Replace spi00 pinctrl with our pin assignments (P2.04=MOSI, P2.02=MISO) */
-/delete-node/ &{/pin-controller/spi00_default/group1/};
-/delete-node/ &{/pin-controller/spi00_sleep/group1/};
+/* Override spi00 pinctrl: board default has MOSI=P2.02/MISO=P2.04 (NOR flash);
+ * our PCB routes P2.04→ADS1299 DIN and P2.02→ADS1299 DOUT, so swap them. */
+&spi00_default {
+    group1 {
+        psels = <NRF_PSEL(SPIM_SCK,  2, 1)>,
+                <NRF_PSEL(SPIM_MOSI, 2, 4)>,
+                <NRF_PSEL(SPIM_MISO, 2, 2)>;
+    };
+};
+&spi00_sleep {
+    group1 {
+        psels = <NRF_PSEL(SPIM_SCK,  2, 1)>,
+                <NRF_PSEL(SPIM_MOSI, 2, 4)>,
+                <NRF_PSEL(SPIM_MISO, 2, 2)>;
+        low-power-enable;
+    };
+};
 
 &spi00 {
     status = "okay";
@@ -33,7 +47,7 @@
     bno086: bno086@1 {
         compatible = "ceva,bno086";
         reg = <1>;
-        spi-max-frequency = <3000000>;
+        spi-max-frequency = <2000000>;
         label = "BNO086";
         int-gpios  = <&gpio1 3 GPIO_ACTIVE_LOW>;
         rst-gpios  = <&gpio1 2 GPIO_ACTIVE_LOW>;
@@ -61,8 +75,7 @@
 };
 
 /* Board enables i2c20 on P0.00/P0.03, same pins we use for i2c21 — disable it */
-/delete-node/ &{/pin-controller/i2c20_default/group1/};
-/delete-node/ &{/pin-controller/i2c20_sleep/group1/};
+/* (i2c20_default pinctrl node not present in this board DTS; peripheral disabled below) */
 
 /delete-node/ &{/pin-controller/uart20_default/group1/};
 /delete-node/ &{/pin-controller/uart20_default/group2/};
@@ -77,7 +90,8 @@
         compatible = "nordic,npm1304";
         reg = <0x6b>;
 
-        long-press-reset = "one-button";
+        long-press-reset = "disabled";
+        ship-to-active-time-ms = <1008>;
 
         /* GPIO0 (P2.03) configured as GPO_IRQ output → nRF54L15 interrupt input */
         host-int-gpios = <&gpio2 3 GPIO_ACTIVE_HIGH>;
@@ -94,20 +108,21 @@
             compatible = "nordic,npm1304-regulator";
 
             npm1304_ek_buck1: BUCK1 {
-                regulator-min-microvolt = <1000000>;
+                regulator-min-microvolt = <3300000>;
                 regulator-max-microvolt = <3300000>;
             };
             npm1304_ek_buck2: BUCK2 {
-                regulator-min-microvolt = <1000000>;
+                regulator-min-microvolt = <3300000>;
                 regulator-max-microvolt = <3300000>;
             };
             npm1304_ek_ldo1: LDO1 {
-                regulator-min-microvolt = <1000000>;
+                regulator-min-microvolt = <3300000>;
                 regulator-max-microvolt = <3300000>;
             };
             npm1304_ek_ldo2: LDO2 {
-                regulator-min-microvolt = <1000000>;
+                regulator-min-microvolt = <3300000>;
                 regulator-max-microvolt = <3300000>;
+                regulator-always-on;
             };
         };
 
@@ -147,23 +162,6 @@
 };
 
 &pinctrl {
-    /* spi00: P2.01=SCK, P2.04=MOSI, P2.02=MISO */
-    spi00_default {
-        group1 {
-            psels = <NRF_PSEL(SPIM_SCK,  2, 1)>,
-                    <NRF_PSEL(SPIM_MOSI, 2, 4)>,
-                    <NRF_PSEL(SPIM_MISO, 2, 2)>;
-        };
-    };
-    spi00_sleep {
-        group1 {
-            psels = <NRF_PSEL(SPIM_SCK,  2, 1)>,
-                    <NRF_PSEL(SPIM_MOSI, 2, 4)>,
-                    <NRF_PSEL(SPIM_MISO, 2, 2)>;
-            low-power-enable;
-        };
-    };
-
     i2c21_default: i2c21_default {
         group1 {
             psels = <NRF_PSEL(TWIM_SDA, 0, 0)>,

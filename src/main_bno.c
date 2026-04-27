@@ -53,6 +53,6 @@ int main(void)
 
     while (1) {
         bno086_service();
-        k_sleep(K_MSEC(10));
+        k_sleep(K_MSEC(1));
     }
 }
